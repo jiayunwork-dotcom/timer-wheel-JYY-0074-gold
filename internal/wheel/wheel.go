@@ -172,6 +172,10 @@ func (w *Wheel) Cancel(id int64) bool {
 	}
 	delete(w.entries, id)
 	e.cancelled = true
+	if e.bucket != nil {
+		removeEntry(e.bucket, e)
+		e.bucket = nil
+	}
 	return true
 }
 
@@ -240,6 +244,9 @@ func (w *Wheel) Advance(now time.Time) {
 			break
 		}
 		heapPop(w.queue)
+		if e.cancelled {
+			continue
+		}
 		fired = append(fired, e)
 	}
 	for _, e := range fired {
@@ -285,6 +292,9 @@ func (w *Wheel) flush(now time.Time) {
 		b.entries = nil
 		b.expiration = time.Time{}
 		for _, e := range entries {
+			if e.cancelled {
+				continue
+			}
 			e.bucket = nil
 			w.root.addEntry(e)
 		}
@@ -295,6 +305,9 @@ func (w *Wheel) flush(now time.Time) {
 // both Add and the cascade (flush). The expiry queue and ready heap live on the
 // root level so all levels share a single ordering.
 func (w *Wheel) addEntry(e *entry) {
+	if e.cancelled {
+		return
+	}
 	if e.expiration.Before(w.currentTime.Add(w.tick)) {
 		heapPush(w.root.queue, e)
 		return

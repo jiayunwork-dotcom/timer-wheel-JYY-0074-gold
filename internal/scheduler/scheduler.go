@@ -137,7 +137,6 @@ func (s *Scheduler) Cancel(id int64) bool {
 	ok := s.wheel.Cancel(id)
 	if ok {
 		atomic.AddInt64(&s.cancelled, 1)
-		s.signalWake()
 	}
 	return ok
 }
